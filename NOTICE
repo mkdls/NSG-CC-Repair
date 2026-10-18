@@ -1,0 +1,17 @@
+NSG CC Repair
+Copyright (C) 2026 mkdls
+SPDX-License-Identifier: GPL-3.0-only
+
+Project source is distributed under GNU GPL version 3; see LICENSE.
+
+Build-time dependency: libxposed API 102.0.0, Apache License 2.0.
+https://github.com/libxposed/api
+The API is compile-only; framework implementation is not bundled in this APK.
+
+Design reference: NSG Tweaks by henrik, MIT License.
+https://github.com/h3nnes/nsg-tweaks
+Its reference copyright notice is retained in LICENSES/nsg-tweaks-MIT.txt.
+
+Network Signal Guru is a separate application owned by its respective authors.
+No NSG APK, modem firmware, decompiled NSG source, or device logs are included.
+This project is not affiliated with NSG or its developers.

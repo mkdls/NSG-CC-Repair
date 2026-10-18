@@ -1,0 +1,13 @@
+/.build/
+/dist/
+/.deps/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.log
+*.log.gz
+local.properties
+.env
+.idea/
+.vscode/
