@@ -37,8 +37,8 @@ public final class CcModule extends XposedModule {
   hook(loader.loadClass("y80").getMethod("E",LayoutInflater.class,ViewGroup.class,Bundle.class)).intercept(chain->{
    View original=(View)chain.proceed();if(original==null)return null;
    Context ctx=original.getContext();LinearLayout box=new LinearLayout(ctx);box.setOrientation(LinearLayout.VERTICAL);
-   Button button=new Button(ctx);button.setText("CC repair status · 1.0.9");button.setOnClickListener(v->{
-    String message="CC Repair 1.0.9\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
+   Button button=new Button(ctx);button.setText("CC repair status · 1.1.2");button.setOnClickListener(v->{
+    String message="CC Repair 1.1.2\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
     TextView text=new TextView(ctx);text.setText(message);text.setTextIsSelectable(true);text.setPadding(24,16,24,16);ScrollView scroll=new ScrollView(ctx);scroll.addView(text);
     new AlertDialog.Builder(ctx).setTitle("CC repair status").setView(scroll).setPositiveButton("Close",null).setNeutralButton("Copy",(d,w)->{((ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("CC status",message));}).show();
    });box.addView(button,new LinearLayout.LayoutParams(-1,-2));box.addView(original,new LinearLayout.LayoutParams(-1,0,1));return box;
@@ -92,6 +92,10 @@ public final class CcModule extends XposedModule {
  private boolean testingActive(){
   try{Object service=loader.loadClass("com.qtrun.sys.TestService").getMethod("o").invoke(null);return Boolean.TRUE.equals(read(service,"o"))&&!Boolean.TRUE.equals(read(service,"p"));}catch(Throwable e){return false;}
  }
+ private boolean cursorLocked(){
+  try{Object service=loader.loadClass("com.qtrun.sys.TestService").getMethod("o").invoke(null);return Boolean.TRUE.equals(service.getClass().getMethod("x").invoke(service));}
+  catch(Throwable e){return true;}
+ }
  private void attachTestingSource(Object source){
   try{
    Object ws=field(loader.loadClass("com.qtrun.sys.Workspace"),"j").get(null);
@@ -108,10 +112,13 @@ public final class CcModule extends XposedModule {
      if(job.cancelled||read(active,"c")!=target)return;
      if(job.index==null)nsaReferenceStatus=job.status;
      if(job.index!=null&&job.index.applicable)beginAutomaticRrc(target,job);
-     // Testing bypasses Workspace.e (which requires a replay cursor).
+     // Acquisition stays live; display refresh must honor NSG's history lock.
      if(testingActive()){
-      Object timestamp=property.invoke(target,"Common::Timestamp",((Number)read(active,"a")).intValue());
-      if(timestamp!=null){Object tail=iter(timestamp);last.invoke(tail);if(!(boolean)ended.invoke(tail))active.getClass().getMethod("a",long.class,short.class,boolean.class,Object.class).invoke(active,((Number)key.invoke(tail)).longValue(),((Number)read(active,"a")).shortValue(),false,null);}
+      boolean locked=cursorLocked();long latest=-1;
+      if(!locked){Object timestamp=property.invoke(target,"Common::Timestamp",((Number)read(active,"a")).intValue());
+       if(timestamp!=null){Object tail=iter(timestamp);last.invoke(tail);if(!(boolean)ended.invoke(tail))latest=((Number)key.invoke(tail)).longValue();}}
+      long refresh=CursorPolicy.select(true,locked,((Number)read(active,"g")).longValue(),latest);
+      if(refresh>=0)active.getClass().getMethod("a",long.class,short.class,boolean.class,Object.class).invoke(active,refresh,((Number)read(active,"a")).shortValue(),false,null);
      }
     }catch(Throwable e){event("relay_live_refresh_error","error",e.toString());}
    }));

@@ -2,7 +2,7 @@
 
 Experimental standalone LSPosed module for missing carrier rows in **Network Signal Guru (NSG) qtrun 4.8.10**, observed with Pixel Shannon modems and Huawei n257 cells using 100 MHz component carriers.
 
-**Current release: 1.0.9 — pre-release.** Downlink repair has been field-tested in the target scenario. Some uplink label problems remain unresolved; 1.0.9 does not claim to fix every 2–3 CC uplink case.
+**Current release: 1.1.2 — pre-release.** Fixes background refresh overriding the selected history cursor during locked Testing. The cursor fix has desktop coverage and needs phone validation. Existing downlink repair was field-tested in the target scenario; partial uplink-label problems remain unresolved.
 
 ## What it does
 
@@ -28,7 +28,7 @@ This is not a general repair for every modem, NSG release, band, or dual-SIM con
 
 1. Install the APK from [Releases](https://github.com/mkdls/NSG-CC-Repair/releases).
 2. Enable **NSG CC Repair** in LSPosed and scope it to Network Signal Guru.
-3. Disable combined NSG Signaling Export **0.1.35 and earlier**, because they also modify carrier rows. Export **0.1.36-export-only** can be enabled alongside this module. The launcher's older instruction refers to the combined versions.
+3. Disable combined NSG Signaling Export **0.1.35 and earlier**, because they also modify carrier rows. Export **0.1.36-export-only and newer separate-export builds** can be enabled alongside this module. For the NR CC Metrics swipe page, update NSG Signaling Export to **0.1.39-metrics-pager** to obtain its corresponding cursor fix.
 4. Fully stop and restart NSG.
 
 ### Replay
@@ -38,6 +38,10 @@ Load a supported `.log` or `.log.gz`, then view **NSA Data Metrics**. Complete S
 ### Live Testing
 
 Enable **raw log saving in NSG**, then start a new test/recording. Allow the root read request when prompted. The module independently follows the regular log file for the current Testing session; it does not consume NSG's modem/socket stream or modify the log. A `Testing live log` status with increasing counters indicates the reader is active. Complete RRC may still be required for frequency labels; a late start may miss initial configuration.
+
+### Buffered history during Testing
+
+Tap the lock to stop following live time, then seek with the replay controls. Recording and indexing continue in the background while carrier rows follow the selected history cursor. Unlocking restores live display. The optional NR CC Metrics swipe page belongs to NSG Signaling Export; update that module separately.
 
 ## Known limitations
 

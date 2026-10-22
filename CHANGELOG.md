@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2 — pre-release
+
+- Honor NSG's display lock during Testing: background index refresh uses the selected workspace cursor while locked and returns to the latest sample only when unlocked.
+- Continue acquisition and indexing while the user seeks buffered history.
+- Add cursor-transition tests covering live, lock, history seek, unlock and loaded-file replay.
+- Keep NR CC Metrics in the separate NSG Signaling Export module (use 0.1.39-metrics-pager for its matching fix).
+- Cursor fix: desktop tests passed; phone validation pending.
+
+
 ## 1.0.9 — pre-release
 
 - Standalone carrier repair module (`com.nsgcc`); no signaling export or authorization-state changes.

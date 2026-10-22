@@ -34,7 +34,7 @@ $sources = Get-ChildItem "$PSScriptRoot/src" -Recurse -Filter '*.java' | ForEach
 Checked "$JavaHome/bin/javac.exe" (@('-encoding','UTF-8','-source','17','-target','17','-classpath',"$android;$ApiJar",'-d',"$BuildDir/classes") + $sources)
 Checked "$JavaHome/bin/jar.exe" @("-J-Djava.io.tmpdir=$BuildDir",'cf',"$BuildDir/classes.jar",'-C',"$BuildDir/classes",'.')
 Checked "$bt/d8.bat" @('--lib',$android,'--classpath',$ApiJar,'--min-api','29','--output',"$BuildDir/dex","$BuildDir/classes.jar")
-Checked "$bt/aapt2.exe" @('link','-I',$android,'--manifest',"$PSScriptRoot/AndroidManifest.xml",'--version-code','10','--version-name','1.0.9','-o',"$BuildDir/unsigned.apk")
+Checked "$bt/aapt2.exe" @('link','-I',$android,'--manifest',"$PSScriptRoot/AndroidManifest.xml",'--version-code','13','--version-name','1.1.2','-o',"$BuildDir/unsigned.apk")
 $zip = [System.IO.Compression.ZipFile]::Open("$BuildDir/unsigned.apk",[System.IO.Compression.ZipArchiveMode]::Update)
 try {
  [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,"$BuildDir/dex/classes.dex",'classes.dex') | Out-Null
@@ -51,7 +51,7 @@ if (!$Keystore) {
 } else {
  $signing = @('--ks-pass',"env:$StorePasswordEnv",'--key-pass',"env:$KeyPasswordEnv")
 }
-$output = "$PSScriptRoot/dist/NSG-CC-Repair-1.0.9.apk"
+$output = "$PSScriptRoot/dist/NSG-CC-Repair-1.1.2.apk"
 Checked "$bt/apksigner.bat" (@('sign','--ks',$Keystore,'--ks-key-alias',$KeyAlias) + $signing + @('--out',$output,"$BuildDir/aligned.apk"))
 Checked "$bt/apksigner.bat" @('verify','--verbose',$output)
 Write-Output "Built $output"
