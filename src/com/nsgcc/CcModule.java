@@ -6,6 +6,9 @@ import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam;
 public final class CcModule extends XposedModule {
  private static final String TAG="NSGCC";
+ private boolean signalingGuardInstalled;
+ private String signalingGuardStatus="Not installed";
+ private long passiveSignalUpdates,skippedPassiveRefreshes;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private ClassLoader loader;private Method property,detail,first,last,seek,ended,next,key,value;private Constructor<?> iterator;
  private static final class RrcView {Object source;int sim;long id;String text;List<RrcCarrierFallback.Cell> cells;}
@@ -22,7 +25,7 @@ public final class CcModule extends XposedModule {
    Class<?> ds=loader.loadClass("com.qtrun.sys.DataSource"),p=loader.loadClass("com.qtrun.sys.Property"),it=loader.loadClass("com.qtrun.sys.Property$Iterator");
    property=ds.getMethod("getProperty",String.class,int.class);detail=ds.getMethod("printDetail",long.class,int.class);iterator=it.getConstructor(p);
    first=it.getMethod("forward");last=it.getMethod("reverse");seek=it.getMethod("reverse",long.class);ended=it.getMethod("end");next=it.getMethod("next");key=it.getMethod("key");value=it.getMethod("value");
-   installRelaySourceCapture(ds);installNsaReferenceRows(ds);installStatusButton();
+   installSignalingGuard(ds);installRelaySourceCapture(ds);installNsaReferenceRows(ds);installStatusButton();
    // Cache only details NSG actually returned; no authorization or decoder-state changes.
    Method nativeDetail=ds.getDeclaredMethod("printDetail",long.class,long.class,int.class);nativeDetail.setAccessible(true);
    hook(nativeDetail).intercept(chain->{Object result=chain.proceed();try{
@@ -33,12 +36,31 @@ public final class CcModule extends XposedModule {
    }catch(Throwable e){Log.w(TAG,"RRC observation",e);}return result;});
   }catch(Throwable e){Log.e(TAG,"CC module setup",e);nsaReferenceStatus="CC module initialization failed: "+e;}
  }
+ private void installSignalingGuard(Class<?> ds){
+  try{
+   Method update=loader.loadClass("y80").getMethod("b",ds,long.class,short.class,Object.class);
+   hook(update).intercept(chain->{
+    Object origin=chain.getArg(3),fragment=chain.getThisObject();
+    if(origin!=PassiveRefresh.ORIGIN)return chain.proceed();
+    passiveSignalUpdates++;
+    return chain.proceed(new Object[]{chain.getArg(0),chain.getArg(1),chain.getArg(2),PassiveRefresh.signalingOrigin(origin,fragment)});
+   });
+   boolean deoptimized=deoptimize(loader.loadClass("com.qtrun.sys.Workspace").getMethod("a",long.class,short.class,boolean.class,Object.class));
+   signalingGuardInstalled=true;signalingGuardStatus="Installed; Workspace.a deoptimized="+deoptimized;
+  }catch(Throwable e){signalingGuardStatus="Unavailable: "+e.getClass().getSimpleName()+": "+e.getMessage();Log.w(TAG,"Signaling scroll guard",e);}
+ }
+ /** Index/RRC completion is a data refresh, not a user request to scroll the signaling list. */
+ private void refreshSelected(Object ws,long cursor)throws Exception{
+  if(cursor<0)return;
+  if(!signalingGuardInstalled){skippedPassiveRefreshes++;return;}
+  ws.getClass().getMethod("e",long.class,Object.class).invoke(ws,cursor,PassiveRefresh.ORIGIN);
+ }
  private void installStatusButton()throws Exception{
   hook(loader.loadClass("y80").getMethod("E",LayoutInflater.class,ViewGroup.class,Bundle.class)).intercept(chain->{
    View original=(View)chain.proceed();if(original==null)return null;
    Context ctx=original.getContext();LinearLayout box=new LinearLayout(ctx);box.setOrientation(LinearLayout.VERTICAL);
-   Button button=new Button(ctx);button.setText("CC repair status · 1.1.2");button.setOnClickListener(v->{
-    String message="CC Repair 1.1.2\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
+   Button button=new Button(ctx);button.setText("CC repair status · "+BuildInfo.VERSION);button.setOnClickListener(v->{
+    String message="CC Repair "+BuildInfo.VERSION+"\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
     TextView text=new TextView(ctx);text.setText(message);text.setTextIsSelectable(true);text.setPadding(24,16,24,16);ScrollView scroll=new ScrollView(ctx);scroll.addView(text);
     new AlertDialog.Builder(ctx).setTitle("CC repair status").setView(scroll).setPositiveButton("Close",null).setNeutralButton("Copy",(d,w)->{((ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("CC status",message));}).show();
    });box.addView(button,new LinearLayout.LayoutParams(-1,-2));box.addView(original,new LinearLayout.LayoutParams(-1,0,1));return box;
@@ -71,7 +93,7 @@ public final class CcModule extends XposedModule {
      event("relay_index_result","summary",job.status);Log.i(TAG,"Relay index: "+job.status);
      ui.post(()->{try{
       Object ws=field(loader.loadClass("com.qtrun.sys.Workspace"),"j").get(null);
-      if(read(ws,"c")==target){if(job.index!=null&&job.index.applicable)beginAutomaticRrc(target,job);nsaReferenceStatus=job.status;long cursor=((Number)read(ws,"g")).longValue();if(cursor>=0)ws.getClass().getMethod("e",long.class,Object.class).invoke(ws,cursor,null);}
+      if(read(ws,"c")==target){if(job.index!=null&&job.index.applicable)beginAutomaticRrc(target,job);nsaReferenceStatus=job.status;long cursor=((Number)read(ws,"g")).longValue();refreshSelected(ws,cursor);}
      }catch(Throwable e){event("relay_refresh_error","error",e.toString());}});
     });return source;
    });
@@ -118,7 +140,10 @@ public final class CcModule extends XposedModule {
       if(!locked){Object timestamp=property.invoke(target,"Common::Timestamp",((Number)read(active,"a")).intValue());
        if(timestamp!=null){Object tail=iter(timestamp);last.invoke(tail);if(!(boolean)ended.invoke(tail))latest=((Number)key.invoke(tail)).longValue();}}
       long refresh=CursorPolicy.select(true,locked,((Number)read(active,"g")).longValue(),latest);
-      if(refresh>=0)active.getClass().getMethod("a",long.class,short.class,boolean.class,Object.class).invoke(active,refresh,((Number)read(active,"a")).shortValue(),false,null);
+      if(refresh>=0){
+       if(locked&&!signalingGuardInstalled)skippedPassiveRefreshes++;
+       else active.getClass().getMethod("a",long.class,short.class,boolean.class,Object.class).invoke(active,refresh,((Number)read(active,"a")).shortValue(),false,PassiveRefresh.liveOrigin(locked));
+      }
      }
     }catch(Throwable e){event("relay_live_refresh_error","error",e.toString());}
    }));
@@ -160,7 +185,7 @@ public final class CcModule extends XposedModule {
      }
      job.autoRrcStarted=false;
      if(job.needsRrc){job.autoRrcStatus="No complete SCG yet; targeted calls "+job.rrcPlan.calls+"/4. Generic reconfiguration messages were not decoded.";if(job.live)ui.postDelayed(()->beginAutomaticRrc(source,job),3000);}
-     long cursor=((Number)read(ws,"g")).longValue();if(cursor>=0)ws.getClass().getMethod("e",long.class,Object.class).invoke(ws,cursor,null);
+     long cursor=((Number)read(ws,"g")).longValue();refreshSelected(ws,cursor);
     }catch(Throwable e){job.autoRrcStarted=false;job.autoRrcStatus="Targeted RRC decoding failed: "+e.getClass().getSimpleName();}
    }
   },500);
@@ -314,9 +339,10 @@ public final class CcModule extends XposedModule {
  }
 
  private String relayStatusForUser(){
+  String scroll="\nSignaling scroll guard: "+signalingGuardStatus+"; passive signaling updates="+passiveSignalUpdates+"; skipped passive refreshes="+skippedPassiveRefreshes;
   try{Object ws=field(loader.loadClass("com.qtrun.sys.Workspace"),"j").get(null);RelaySources.Job j=relaySources.get(read(ws,"c"));
-   if(j!=null)return j.status+"\n"+j.autoRrcStatus+"\nRRC totals: candidates "+j.rrcDecoded+"; complete configurations "+j.rrcFound+"; deferred decoding "+j.rrcDeferred+"; latest: "+j.lastRrcLines+" lines; normal retries "+j.rrcRetries+" attempts\n"+j.displayStatus+"\n"+j.uplinkStatus+"\nLast display status: "+nsaReferenceStatus;
-  }catch(Throwable ignored){}return nsaReferenceStatus;
+   if(j!=null)return j.status+"\n"+j.autoRrcStatus+"\nRRC totals: candidates "+j.rrcDecoded+"; complete configurations "+j.rrcFound+"; deferred decoding "+j.rrcDeferred+"; latest: "+j.lastRrcLines+" lines; normal retries "+j.rrcRetries+" attempts\n"+j.displayStatus+"\n"+j.uplinkStatus+"\nLast display status: "+nsaReferenceStatus+scroll;
+  }catch(Throwable ignored){}return nsaReferenceStatus+scroll;
  }
 
 }

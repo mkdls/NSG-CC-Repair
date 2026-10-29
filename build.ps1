@@ -10,6 +10,8 @@ param(
  [string]$KeyPasswordEnv = 'CC_REPAIR_KEY_PASSWORD'
 )
 $ErrorActionPreference = 'Stop'
+$version = '1.1.3'
+$versionCode = 14
 if (!$JavaHome) { throw 'Set JAVA_HOME to a JDK 21 installation, or pass -JavaHome.' }
 $bt = Join-Path $Sdk "build-tools/$BuildTools"
 $android = Join-Path $Sdk 'platforms/android-36/android.jar'
@@ -18,8 +20,11 @@ foreach ($required in @($android, "$JavaHome/bin/javac.exe", "$bt/aapt2.exe")) {
 }
 $env:JAVA_HOME = $JavaHome
 $env:PATH = "$JavaHome/bin;$env:PATH"
-New-Item -ItemType Directory -Force "$BuildDir/classes", "$BuildDir/dex", "$BuildDir/deps", "$PSScriptRoot/dist" | Out-Null
+New-Item -ItemType Directory -Force "$BuildDir/deps", "$PSScriptRoot/dist" | Out-Null
 $BuildDir = (Resolve-Path $BuildDir).Path
+$compile = Join-Path $BuildDir "$version/$([Guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Force "$compile/classes", "$compile/dex" | Out-Null
+"package com.nsgcc; public final class BuildInfo { public static final String VERSION=`"$version`"; }" | Set-Content -LiteralPath "$compile/BuildInfo.java" -Encoding utf8
 function Checked { param([string]$Exe,[string[]]$Arguments) & $Exe @Arguments; if($LASTEXITCODE -ne 0) { throw "$Exe failed: $LASTEXITCODE" } }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 if (!$ApiJar) {
@@ -30,20 +35,21 @@ if (!$ApiJar) {
  $archive = [System.IO.Compression.ZipFile]::OpenRead($aar)
  try { [System.IO.Compression.ZipFileExtensions]::ExtractToFile($archive.GetEntry('classes.jar'),$ApiJar,$true) } finally { $archive.Dispose() }
 }
-$sources = Get-ChildItem "$PSScriptRoot/src" -Recurse -Filter '*.java' | ForEach-Object FullName
-Checked "$JavaHome/bin/javac.exe" (@('-encoding','UTF-8','-source','17','-target','17','-classpath',"$android;$ApiJar",'-d',"$BuildDir/classes") + $sources)
-Checked "$JavaHome/bin/jar.exe" @("-J-Djava.io.tmpdir=$BuildDir",'cf',"$BuildDir/classes.jar",'-C',"$BuildDir/classes",'.')
-Checked "$bt/d8.bat" @('--lib',$android,'--classpath',$ApiJar,'--min-api','29','--output',"$BuildDir/dex","$BuildDir/classes.jar")
-Checked "$bt/aapt2.exe" @('link','-I',$android,'--manifest',"$PSScriptRoot/AndroidManifest.xml",'--version-code','13','--version-name','1.1.2','-o',"$BuildDir/unsigned.apk")
-$zip = [System.IO.Compression.ZipFile]::Open("$BuildDir/unsigned.apk",[System.IO.Compression.ZipArchiveMode]::Update)
+$sources = @(Get-ChildItem "$PSScriptRoot/src" -Recurse -Filter '*.java' | ForEach-Object FullName)
+$sources += "$compile/BuildInfo.java"
+Checked "$JavaHome/bin/javac.exe" (@('-encoding','UTF-8','-source','17','-target','17','-classpath',"$android;$ApiJar",'-d',"$compile/classes") + $sources)
+Checked "$JavaHome/bin/jar.exe" @("-J-Djava.io.tmpdir=$compile",'cf',"$compile/classes.jar",'-C',"$compile/classes",'.')
+Checked "$bt/d8.bat" @('--lib',$android,'--classpath',$ApiJar,'--min-api','29','--output',"$compile/dex","$compile/classes.jar")
+Checked "$bt/aapt2.exe" @('link','-I',$android,'--manifest',"$PSScriptRoot/AndroidManifest.xml",'--version-code',"$versionCode",'--version-name',$version,'-o',"$compile/unsigned.apk")
+$zip = [System.IO.Compression.ZipFile]::Open("$compile/unsigned.apk",[System.IO.Compression.ZipArchiveMode]::Update)
 try {
- [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,"$BuildDir/dex/classes.dex",'classes.dex') | Out-Null
+ [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,"$compile/dex/classes.dex",'classes.dex') | Out-Null
  Get-ChildItem "$PSScriptRoot/resources" -Recurse -File | ForEach-Object {
   $entry = $_.FullName.Substring((Join-Path $PSScriptRoot 'resources').Length + 1).Replace('\','/')
   [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$_.FullName,$entry) | Out-Null
  }
 } finally { $zip.Dispose() }
-Checked "$bt/zipalign.exe" @('-f','4',"$BuildDir/unsigned.apk","$BuildDir/aligned.apk")
+Checked "$bt/zipalign.exe" @('-f','4',"$compile/unsigned.apk","$compile/aligned.apk")
 if (!$Keystore) {
  $Keystore = "$BuildDir/debug.keystore"
  if (!(Test-Path -LiteralPath $Keystore)) { Checked "$JavaHome/bin/keytool.exe" @('-genkeypair','-keystore',$Keystore,'-storepass','android','-keypass','android','-alias','androiddebugkey','-dname','CN=NSG CC Repair Development','-keyalg','RSA','-validity','10000') }
@@ -51,7 +57,7 @@ if (!$Keystore) {
 } else {
  $signing = @('--ks-pass',"env:$StorePasswordEnv",'--key-pass',"env:$KeyPasswordEnv")
 }
-$output = "$PSScriptRoot/dist/NSG-CC-Repair-1.1.2.apk"
-Checked "$bt/apksigner.bat" (@('sign','--ks',$Keystore,'--ks-key-alias',$KeyAlias) + $signing + @('--out',$output,"$BuildDir/aligned.apk"))
+$output = "$PSScriptRoot/dist/NSG-CC-Repair-$version.apk"
+Checked "$bt/apksigner.bat" (@('sign','--ks',$Keystore,'--ks-key-alias',$KeyAlias) + $signing + @('--out',$output,"$compile/aligned.apk"))
 Checked "$bt/apksigner.bat" @('verify','--verbose',$output)
 Write-Output "Built $output"
