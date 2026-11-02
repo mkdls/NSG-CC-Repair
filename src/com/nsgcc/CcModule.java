@@ -21,6 +21,7 @@ public final class CcModule extends XposedModule {
  private void event(String name,Object... values){Log.i(TAG,name+" "+Arrays.toString(values));}
  @Override public void onPackageReady(PackageReadyParam param){
   if(!"com.qtrun.QuickTest".equals(param.getPackageName()))return;loader=param.getClassLoader();
+  Log.i(TAG,"Framework: "+getFrameworkName()+" "+getFrameworkVersion()+"; API "+getApiVersion());
   try{
    Class<?> ds=loader.loadClass("com.qtrun.sys.DataSource"),p=loader.loadClass("com.qtrun.sys.Property"),it=loader.loadClass("com.qtrun.sys.Property$Iterator");
    property=ds.getMethod("getProperty",String.class,int.class);detail=ds.getMethod("printDetail",long.class,int.class);iterator=it.getConstructor(p);
@@ -60,7 +61,8 @@ public final class CcModule extends XposedModule {
    View original=(View)chain.proceed();if(original==null)return null;
    Context ctx=original.getContext();LinearLayout box=new LinearLayout(ctx);box.setOrientation(LinearLayout.VERTICAL);
    Button button=new Button(ctx);button.setText("CC repair status · "+BuildInfo.VERSION);button.setOnClickListener(v->{
-    String message="CC Repair "+BuildInfo.VERSION+"\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
+    String host="unknown";try{android.content.pm.PackageInfo info=ctx.getPackageManager().getPackageInfo(ctx.getPackageName(),0);host=info.versionName+" ("+info.getLongVersionCode()+")";}catch(Exception ignored){}
+    String message="CC Repair "+BuildInfo.VERSION+"\nHost: "+host+"\nFramework: "+getFrameworkName()+" "+getFrameworkVersion()+"; API "+getApiVersion()+"\nEnabled: "+nsaReferenceEnabled+"\n"+relayStatusForUser();
     TextView text=new TextView(ctx);text.setText(message);text.setTextIsSelectable(true);text.setPadding(24,16,24,16);ScrollView scroll=new ScrollView(ctx);scroll.addView(text);
     new AlertDialog.Builder(ctx).setTitle("CC repair status").setView(scroll).setPositiveButton("Close",null).setNeutralButton("Copy",(d,w)->{((ClipboardManager)ctx.getSystemService(Context.CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("CC status",message));}).show();
    });box.addView(button,new LinearLayout.LayoutParams(-1,-2));box.addView(original,new LinearLayout.LayoutParams(-1,0,1));return box;

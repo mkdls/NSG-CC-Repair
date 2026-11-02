@@ -1,8 +1,8 @@
 # NSG CC Repair
 
-Experimental standalone LSPosed module for missing carrier rows in **Network Signal Guru (NSG) qtrun 4.8.10**, observed with Pixel Shannon modems and Huawei n257 cells using 100 MHz component carriers.
+Experimental standalone LSPosed module for missing carrier rows in **Network Signal Guru (NSG) qtrun 4.8.10 / 4.8.12**, observed with Pixel Shannon modems and Huawei n257 cells using 100 MHz component carriers.
 
-**Current release: 1.1.3 — pre-release.** Fixes CC Repair background updates pulling the Signaling list back to the cursor row while browsing locked history. The reporting Pixel user confirmed the fix with NSG Signaling Export 0.1.40 enabled. Existing downlink repair was field-tested in the target scenario; broader compatibility remains experimental and partial uplink-label problems remain unresolved.
+**Current release: 1.1.4 — pre-release.** Vector v2.2-3080 / API 102 and qtrun 4.8.12 Java entry points were inspected offline; handset validation remains pending. See [compatibility details](COMPATIBILITY.md). The previous 1.1.3 release Fixes CC Repair background updates pulling the Signaling list back to the cursor row while browsing locked history. The reporting Pixel user confirmed the fix with NSG Signaling Export 0.1.40 enabled. Existing downlink repair was field-tested in the target scenario; broader compatibility remains experimental and partial uplink-label problems remain unresolved.
 
 ## What it does
 
@@ -18,7 +18,7 @@ A frequency marked `*` is an **RRC-derived resource-grid center**, not a measure
 ## Requirements and scope
 
 - Root and a framework supporting modern libxposed API 101/102.
-- NSG **qtrun 4.8.10**, package `com.qtrun.QuickTest`.
+- NSG **qtrun 4.8.10 / 4.8.12**, package `com.qtrun.QuickTest`.
 - Recognized Shannon profiles: **ICD9 / 1700.24.79** and **1700.26.36**.
 - Target mapping format: **n257, 100 MHz, 120 kHz SCS**, verified single-stack/module 1 context.
 
@@ -76,3 +76,8 @@ Include module version, NSG version, firmware profile, Replay/Testing mode, and 
 ## License and references
 
 Copyright (C) 2026 mkdls. Licensed under **GPL-3.0-only**; see [LICENSE](LICENSE). Dependency and reference notices are in [NOTICE](NOTICE). Inspired by the NSG Tweaks approach. This is an independent project, not affiliated with NSG or its authors.
+
+## 1.1.4 compatibility update
+
+Vector v2.2-3080 (modern API 102) and qtrun 4.8.12 Java entry points have been inspected offline. Runtime status includes the host and framework versions. On-device injection and live/replay verification remain pending. See [compatibility details](COMPATIBILITY.md).
+

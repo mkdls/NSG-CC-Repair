@@ -1,3 +1,12 @@
+## 1.1.4
+
+- Check compatibility against the supplied Vector v2.2-3080 modern libxposed API 102 entry points.
+- Add actual NSG host version/code and framework name/version/API to runtime diagnostics.
+- Review Java hook entry points against qtrun 4.8.12 while retaining 4.8.10 mappings and the locked Signaling scroll fix.
+- Preserve the existing Shannon ICD9 log profile limits and carrier calculations.
+
+Offline builds and four core regression suites passed. Vector injection and 4.8.12 live/replay field behavior still require handset validation. This release is a prerelease for that reason. See COMPATIBILITY.md. No license state or native authorization changes are included in CC Repair.
+
 # Changelog
 
 ## 1.1.3 — pre-release
@@ -27,3 +36,4 @@
 - English UI and copyable status diagnostics.
 
 Initial public publication preserves the existing 1.0.9 application behavior. Public build scripts, documentation, license, and synthetic tests were prepared separately for distribution.
+
