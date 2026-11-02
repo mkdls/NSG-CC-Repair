@@ -36,4 +36,3 @@ Offline builds and four core regression suites passed. Vector injection and 4.8.
 - English UI and copyable status diagnostics.
 
 Initial public publication preserves the existing 1.0.9 application behavior. Public build scripts, documentation, license, and synthetic tests were prepared separately for distribution.
-
