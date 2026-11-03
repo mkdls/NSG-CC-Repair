@@ -19,14 +19,24 @@ public final class CcModule extends XposedModule {
  private Object iter(Object p)throws Exception{return p==null?null:iterator.newInstance(p);}
  private static String str(Object o){return o==null?null:o.toString();}
  private void event(String name,Object... values){Log.i(TAG,name+" "+Arrays.toString(values));}
+ @Override public void onModuleLoaded(io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam param){
+  log(Log.ERROR,"VectorContext","Diagnostic checkpoint (not an error): Lifecycle module loaded; process="+param.getProcessName()+"; pid="+android.os.Process.myPid()+"; framework="+getFrameworkName()+" "+getFrameworkVersion());
+ }
+ @Override public void onPackageLoaded(io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam param){
+  log(Log.ERROR,"VectorContext","Diagnostic checkpoint (not an error): Lifecycle package loaded: "+param.getPackageName()+"; loader="+param.getDefaultClassLoader());
+ }
  @Override public void onPackageReady(PackageReadyParam param){
+  log(Log.ERROR,"VectorContext","Diagnostic checkpoint (not an error): Lifecycle package ready: "+param.getPackageName()+"; pid="+android.os.Process.myPid()+"; loader="+param.getClassLoader());
   if(!"com.qtrun.QuickTest".equals(param.getPackageName()))return;loader=param.getClassLoader();
   Log.i(TAG,"Framework: "+getFrameworkName()+" "+getFrameworkVersion()+"; API "+getApiVersion());
   try{
+   HostLayout.configure(loader);log(Log.INFO,"VectorContext",HostLayout.description());
    Class<?> ds=loader.loadClass("com.qtrun.sys.DataSource"),p=loader.loadClass("com.qtrun.sys.Property"),it=loader.loadClass("com.qtrun.sys.Property$Iterator");
    property=ds.getMethod("getProperty",String.class,int.class);detail=ds.getMethod("printDetail",long.class,int.class);iterator=it.getConstructor(p);
    first=it.getMethod("forward");last=it.getMethod("reverse");seek=it.getMethod("reverse",long.class);ended=it.getMethod("end");next=it.getMethod("next");key=it.getMethod("key");value=it.getMethod("value");
-   installSignalingGuard(ds);installRelaySourceCapture(ds);installNsaReferenceRows(ds);installStatusButton();
+   installStatusButton();log(Log.INFO,"VectorContext","Status view hook installed");
+   installSignalingGuard(ds);installRelaySourceCapture(ds);installNsaReferenceRows(ds);
+   log(Log.INFO,"VectorContext","Carrier hooks installed");
    // Cache only details NSG actually returned; no authorization or decoder-state changes.
    Method nativeDetail=ds.getDeclaredMethod("printDetail",long.class,long.class,int.class);nativeDetail.setAccessible(true);
    hook(nativeDetail).intercept(chain->{Object result=chain.proceed();try{
@@ -35,11 +45,11 @@ public final class CcModule extends XposedModule {
      if(read(ws,"c")==chain.getThisObject())rememberRrc(chain.getThisObject(),((Number)read(ws,"a")).intValue(),((Number)chain.getArg(1)).longValue(),text);
     }
    }catch(Throwable e){Log.w(TAG,"RRC observation",e);}return result;});
-  }catch(Throwable e){Log.e(TAG,"CC module setup",e);nsaReferenceStatus="CC module initialization failed: "+e;}
+  }catch(Throwable e){log(Log.ERROR,"VectorContext","CC module setup failed",e);Log.e(TAG,"CC module setup",e);nsaReferenceStatus="CC module initialization failed: "+e;}
  }
  private void installSignalingGuard(Class<?> ds){
   try{
-   Method update=loader.loadClass("y80").getMethod("b",ds,long.class,short.class,Object.class);
+   Method update=loader.loadClass(HostLayout.name("y80")).getMethod("b",ds,long.class,short.class,Object.class);
    hook(update).intercept(chain->{
     Object origin=chain.getArg(3),fragment=chain.getThisObject();
     if(origin!=PassiveRefresh.ORIGIN)return chain.proceed();
@@ -48,7 +58,7 @@ public final class CcModule extends XposedModule {
    });
    boolean deoptimized=deoptimize(loader.loadClass("com.qtrun.sys.Workspace").getMethod("a",long.class,short.class,boolean.class,Object.class));
    signalingGuardInstalled=true;signalingGuardStatus="Installed; Workspace.a deoptimized="+deoptimized;
-  }catch(Throwable e){signalingGuardStatus="Unavailable: "+e.getClass().getSimpleName()+": "+e.getMessage();Log.w(TAG,"Signaling scroll guard",e);}
+  }catch(Throwable e){signalingGuardStatus="Unavailable: "+e.getClass().getSimpleName()+": "+e.getMessage();log(Log.WARN,"VectorContext","Signaling scroll guard failed",e);Log.w(TAG,"Signaling scroll guard",e);}
  }
  /** Index/RRC completion is a data refresh, not a user request to scroll the signaling list. */
  private void refreshSelected(Object ws,long cursor)throws Exception{
@@ -57,7 +67,10 @@ public final class CcModule extends XposedModule {
   ws.getClass().getMethod("e",long.class,Object.class).invoke(ws,cursor,PassiveRefresh.ORIGIN);
  }
  private void installStatusButton()throws Exception{
-  hook(loader.loadClass("y80").getMethod("E",LayoutInflater.class,ViewGroup.class,Bundle.class)).intercept(chain->{
+  Method viewMethod=HostMethods.resolve(loader.loadClass(HostLayout.name("y80")),"E",View.class,LayoutInflater.class,ViewGroup.class,Bundle.class);
+  log(Log.ERROR,"VectorContext","Diagnostic resolved signaling view: "+viewMethod);
+  hook(viewMethod).intercept(chain->{
+   if(!loader.loadClass(HostLayout.name("y80")).isInstance(chain.getThisObject()))return chain.proceed();
    View original=(View)chain.proceed();if(original==null)return null;
    Context ctx=original.getContext();LinearLayout box=new LinearLayout(ctx);box.setOrientation(LinearLayout.VERTICAL);
    Button button=new Button(ctx);button.setText("CC repair status · "+BuildInfo.VERSION);button.setOnClickListener(v->{
@@ -205,7 +218,7 @@ public final class CcModule extends XposedModule {
  private final java.util.Map<Object,NsaReferenceState> nsaReferenceStates=java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
  private static final class UplinkState {Object source;int sim;long cursor;List<RelayLogIndex.Row> rows;}
  private final Map<Object,UplinkState> uplinkStates=Collections.synchronizedMap(new WeakHashMap<>());
- private boolean isNsaUplink(Object adapter){try{return read(adapter,"e").getClass().getName().equals("bb0");}catch(Throwable e){return false;}}
+ private boolean isNsaUplink(Object adapter){try{return read(adapter,"e").getClass().getName().equals(HostLayout.name("bb0"));}catch(Throwable e){return false;}}
  private Integer numberAt(Object source,int sim,long cursor,String name)throws Exception{
   Object p=property.invoke(source,name,sim);if(p==null)return null;Object it=iter(p);seek.invoke(it,cursor);if((boolean)ended.invoke(it))return null;
   Object v=value.invoke(it);if(v instanceof Object[]){Object[] a=(Object[])v;v=a.length==0?null:a[0];}return v instanceof Number?((Number)v).intValue():null;
@@ -281,7 +294,7 @@ public final class CcModule extends XposedModule {
   }catch(Throwable e){Log.w(TAG,"UL row labels",e);}return view;
  }
  private boolean isNsaDownlink(Object adapter) {
-  try{return read(adapter,"e").getClass().getName().equals("ab0");}catch(Throwable e){return false;}
+  try{return read(adapter,"e").getClass().getName().equals(HostLayout.name("ab0"));}catch(Throwable e){return false;}
  }
  private java.util.List<RelayLogIndex.Row> nsaRows(Object adapter) {
   if(!nsaReferenceEnabled)return java.util.Collections.emptyList();
@@ -294,7 +307,7 @@ public final class CcModule extends XposedModule {
  }
  private void installNsaReferenceRows(Class<?> ds) {
   try {
-   Class<?> adapter=loader.loadClass("b10");
+   Class<?> adapter=loader.loadClass(HostLayout.name("b10"));
    hook(adapter.getMethod("e",long.class,ds,short.class)).intercept(chain->{
     Object result=chain.proceed(),owner=chain.getThisObject();
     if(isNsaUplink(owner)){boolean hadLabels=uplinkStates.containsKey(owner);prepareUplink(owner,chain.getArg(1),((Number)chain.getArg(2)).intValue(),((Number)chain.getArg(0)).longValue());return hadLabels||uplinkStates.containsKey(owner)?true:result;}

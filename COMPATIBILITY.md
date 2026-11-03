@@ -11,3 +11,7 @@ Idle SCC 1.0.13: retains existing 4.8.10 / 4.8.12 audited profiles and the paire
 Validation is offline: signed APK builds, CC regression suites, both Idle SCC regression suites, and independent native ELF hash/six-instruction/pointer audits against the supplied host APKs. Vector injection and qtrun 4.8.12 live modem/replay behavior have not been handset-tested. The handset remains under the user's control; no installation or restart was performed.
 
 Install only one Idle SCC variant. If Export owns native truncation repair, prefer DisplayOnly rather than stacking two native repair owners. Scope enabled modules to com.qtrun.QuickTest in Vector, then fully restart NSG. Raw log recording remains required for CC Repair live Testing indexing.
+
+## Alternate 4.8.12 layout, verified November 3
+
+NSG 4.8.12 versionCode 4081230 on the tested phone has APK SHA-256 e8a5ef143a7d5bd734dc7435befa691da906f226abdfe753f22577523dcc2e5d. Its mapping differs from the separately supplied 4.8.12 APK. The Signaling fragment is w80, cell adapter y00 and Workspace singleton k. Native library hash still matches the independently audited 4.8.12 profile. CC Repair 1.1.8 handles this alternate Java layout. Replay six-carrier rows were verified on the Pixel with Vector v2.2-3080; arbitrary NSG repacks and live mmWave scenarios are not thereby validated.

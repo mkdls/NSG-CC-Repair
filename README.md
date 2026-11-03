@@ -2,7 +2,7 @@
 
 Experimental standalone LSPosed module for missing carrier rows in **Network Signal Guru (NSG) qtrun 4.8.10 / 4.8.12**, observed with Pixel Shannon modems and Huawei n257 cells using 100 MHz component carriers.
 
-**Current release: 1.1.4 — pre-release.** Vector v2.2-3080 / API 102 and qtrun 4.8.12 Java entry points were inspected offline; handset validation remains pending. See [compatibility details](COMPATIBILITY.md). The previous 1.1.3 release fixes CC Repair background updates pulling the Signaling list back to the cursor row while browsing locked history. The reporting Pixel user confirmed the fix with NSG Signaling Export 0.1.40 enabled. Existing downlink repair was field-tested in the target scenario; broader compatibility remains experimental and partial uplink-label problems remain unresolved.
+**Current release: 1.1.8 — pre-release.** The alternate w80/Workspace.k layout is now verified on-device in Replay with Vector 3080. Live mmWave field verification remains pending. Previous offline checks alone did not detect this host layout. Vector v2.2-3080 / API 102 and qtrun 4.8.12 Java entry points were inspected offline; handset validation remains pending. See [compatibility details](COMPATIBILITY.md). The previous 1.1.3 release fixes CC Repair background updates pulling the Signaling list back to the cursor row while browsing locked history. The reporting Pixel user confirmed the fix with NSG Signaling Export 0.1.40 enabled. Existing downlink repair was field-tested in the target scenario; broader compatibility remains experimental and partial uplink-label problems remain unresolved.
 
 ## What it does
 

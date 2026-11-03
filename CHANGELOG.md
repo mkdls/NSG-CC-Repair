@@ -1,3 +1,11 @@
+## 1.1.8 — alternate 4.8.12 host layout
+
+Fixes initialization failure on the tested Pixel 9 Pro Fold / Vector v2.2-3080: the installed NSG 4.8.12 uses w80 for Signaling, not y80. A matching version number did not imply a matching obfuscation layout.
+
+Adds an explicit alternate layout covering Signaling, adapter and NSA carrier classes, Workspace singleton/source/SIM/cursor fields, service state and related fields. Selection validates Workspace and Signaling contracts and retains the original layout path. Unique full-signature method fallback rejects ambiguity. Lifecycle and setup diagnostics use VectorContext.
+
+On-device verification: both module hooks initialize, csllck.log.gz Replay reconstructs six NR carriers including the three grid-derived frequencies and 100 MHz widths; NR CC Metrics from the companion Export module displays CQI/MCS/RBs and throughput. CC Repair core regressions pass. Live mmWave field verification remains pending; this is still a prerelease. No NSG APK replacement or license-state modification is included in CC Repair.
+
 ## 1.1.4
 
 - Check compatibility against the supplied Vector v2.2-3080 modern libxposed API 102 entry points.

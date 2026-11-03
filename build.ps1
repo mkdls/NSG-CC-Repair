@@ -10,8 +10,8 @@ param(
  [string]$KeyPasswordEnv = 'CC_REPAIR_KEY_PASSWORD'
 )
 $ErrorActionPreference = 'Stop'
-$version = '1.1.4'
-$versionCode = 15
+$version = '1.1.8'
+$versionCode = 19
 if (!$JavaHome) { throw 'Set JAVA_HOME to a JDK 21 installation, or pass -JavaHome.' }
 $bt = Join-Path $Sdk "build-tools/$BuildTools"
 $android = Join-Path $Sdk 'platforms/android-36/android.jar'
